@@ -1,0 +1,123 @@
+services:
+
+  # =========================================
+  # Kafka (KRaft Mode - No Zookeeper)
+  # =========================================
+  kafka:
+    image: confluentinc/cp-kafka:7.8.3
+    container_name: kafka
+    hostname: kafka
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    environment:
+      KAFKA_NODE_ID: 1
+      CLUSTER_ID: "MLOPS-CLUSTER-001"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+
+      # IMPORTANT FIX
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+  # =========================================
+  # NiFi
+  # =========================================
+  nifi:
+    image: apache/nifi:1.23.2
+    container_name: nifi
+    ports:
+      - "8080:8080"
+    environment:
+      NIFI_WEB_HTTP_PORT: 8080
+    volumes:
+      - nifi_conf:/opt/nifi/nifi-current/conf
+      - nifi_state:/opt/nifi/nifi-current/state
+      - nifi_database:/opt/nifi/nifi-current/database_repository
+      - nifi_flowfile:/opt/nifi/nifi-current/flowfile_repository
+      - nifi_content:/opt/nifi/nifi-current/content_repository
+      - nifi_provenance:/opt/nifi/nifi-current/provenance_repository
+
+  nifi-registry:
+    image: apache/nifi-registry:1.23.2
+    container_name: nifi-registry
+    user: "1000:1000"
+    ports:
+      - "18080:18080"
+    environment:
+      NIFI_REGISTRY_WEB_HTTP_PORT: 18080
+    volumes:
+      - ./registry/flow_storage:/opt/nifi-registry/nifi-registry-current/flow_storage
+      - ./registry/database:/opt/nifi-registry/nifi-registry-current/database
+
+  # =========================================
+  # MLflow
+  # =========================================
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.9.2
+    container_name: mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_backend:/mlflow
+      - mlflow_artifacts:/mlruns
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --default-artifact-root /mlruns
+
+
+  # =========================================
+  # Training Service
+  # =========================================
+  training:
+    build: ./services/training_service
+    container_name: training
+    depends_on:
+      - mlflow
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    volumes:
+      - mlflow_artifacts:/mlruns
+
+
+  # =========================================
+  # Inference Service
+  # =========================================
+  inference:
+    build: ./services/inference_service
+    container_name: inference
+    depends_on:
+      - kafka
+      - mlflow
+    restart: always
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    volumes:
+      - mlflow_artifacts:/mlruns
+
+# =========================================
+# Named Volumes (Persistent)
+# =========================================
+volumes:
+  kafka_data:
+  mlflow_backend:
+  mlflow_artifacts:
+  nifi_conf:
+  nifi_state:
+  nifi_database:
+  nifi_flowfile:
+  nifi_content:
+  nifi_provenance:

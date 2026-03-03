@@ -1,0 +1,7 @@
+mkdir -p registry/flow_storage
+mkdir -p registry/database
+
+sudo chown -R 1000:1000 registry
+
+this is used as volume to store nifi data 
+

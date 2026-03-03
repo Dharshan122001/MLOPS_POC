@@ -1,0 +1,6 @@
+mlflow==2.9.2
+pandas
+scikit-learn
+numpy
+confluent-kafka
+kafka-python
