@@ -18,55 +18,6 @@ A production-ready MLOps streaming architecture that demonstrates end-to-end fra
 
 ---
 
-## 🏗️ System Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                        MLOps Fraud Detection Pipeline                            │
-└─────────────────────────────────────────────────────────────────────────────────┘
-
-     ┌──────────────────┐         ┌──────────────────┐
-     │   Apache NiFi    │         │  Training        │
-     │   (Data Gen)     │         │  Service         │
-     │   Port: 8080     │         │  (One-time)      │
-     └────────┬─────────┘         └────────┬─────────┘
-              │                            │
-              │ orders                     │ trained model
-              ▼                            ▼
-     ┌────────────────────────────────────────────────────┐
-     │                    Kafka                            │
-     │              (Message Broker)                      │
-     │            bootstrap-server: 9092                   │
-     └────────────────────┬───────────────────────────────┘
-                          │
-              ┌───────────┴───────────┐
-              │                       │
-              ▼                       ▼
-     ┌──────────────────┐    ┌──────────────────┐
-     │  Inference       │    │  MLflow          │
-     │  Service         │    │  Server          │
-     │  (Real-time)     │    │  Port: 5000      │
-     └────────┬─────────┘    └──────────────────┘
-              │
-              │ predictions (with fraud score)
-              ▼
-     ┌──────────────────┐
-     │  Alert           │
-     │  Service         │
-     │  (Real-time)     │
-     └──────────────────┘
-              │
-              │ fraud_alerts
-              ▼
-     ┌──────────────────┐
-     │  Streamlit       │
-     │  Dashboard       │
-     │  Port: 8501      │
-     └──────────────────┘
-```
-
----
-
 ## 📋 Project Overview
 
 This MLOps POC demonstrates a complete machine learning pipeline:
