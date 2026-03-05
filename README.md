@@ -1,30 +1,29 @@
-# MLOps Fraud Detection Pipeline
+# 🚨 Real-Time Fraud Detection Platform
 
-A complete end-to-end MLOps proof-of-concept (POC) for fraud detection using Kafka, MLflow, Apache NiFi, and scikit-learn. This project demonstrates a real-time fraud detection pipeline with model training, inference, and alerting capabilities.
-
-## Table of Contents
-
-- [Architecture](#architecture)
-- [Project Overview](#project-overview)
-- [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
-- [Services Overview](#services-overview)
-- [Infrastructure Components](#infrastructure-components)
-- [Kafka Topics](#kafka-topics)
-- [Model Details](#model-details)
-- [Environment Variables](#environment-variables)
-- [Troubleshooting](#troubleshooting)
-- [Stopping Services](#stopping-services)
-- [Extending the Project](#extending-the-project)
+A production-ready MLOps streaming architecture that demonstrates end-to-end fraud detection with machine learning inference, real-time alerting, and interactive monitoring.
 
 ---
 
-## Architecture
+## ⭐ Project Highlights
+
+| Feature | Description |
+|---------|-------------|
+| **Real-time Streaming** | Kafka-powered event-driven architecture |
+| **ML Inference** | Real-time fraud prediction using scikit-learn |
+| **Model Registry** | MLflow for model versioning and staging |
+| **Alert Service** | Instant fraud detection alerts |
+| **Data Pipeline** | Apache NiFi for data ingestion |
+| **Monitoring** | Streamlit fraud dashboard |
+| **Containerized** | Fully Dockerized microservices |
+
+---
+
+## 🏗️ System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           MLOps Fraud Detection Pipeline                     │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        MLOps Fraud Detection Pipeline                            │
+└─────────────────────────────────────────────────────────────────────────────────┘
 
      ┌──────────────────┐         ┌──────────────────┐
      │   Apache NiFi    │         │  Training        │
@@ -36,8 +35,8 @@ A complete end-to-end MLOps proof-of-concept (POC) for fraud detection using Kaf
               ▼                            ▼
      ┌────────────────────────────────────────────────────┐
      │                    Kafka                            │
-     │              (Message Broker)                       │
-     │            bootstrap-server: 9092                  │
+     │              (Message Broker)                      │
+     │            bootstrap-server: 9092                   │
      └────────────────────┬───────────────────────────────┘
                           │
               ┌───────────┴───────────┐
@@ -46,7 +45,7 @@ A complete end-to-end MLOps proof-of-concept (POC) for fraud detection using Kaf
      ┌──────────────────┐    ┌──────────────────┐
      │  Inference       │    │  MLflow          │
      │  Service         │    │  Server          │
-     │  (Real-time)     │    │  Port: 5000       │
+     │  (Real-time)     │    │  Port: 5000      │
      └────────┬─────────┘    └──────────────────┘
               │
               │ predictions (with fraud score)
@@ -56,32 +55,39 @@ A complete end-to-end MLOps proof-of-concept (POC) for fraud detection using Kaf
      │  Service         │
      │  (Real-time)     │
      └──────────────────┘
+              │
+              │ fraud_alerts
+              ▼
+     ┌──────────────────┐
+     │  Streamlit       │
+     │  Dashboard       │
+     │  Port: 8501      │
+     └──────────────────┘
 ```
 
 ---
 
-## Project Overview
+## 📋 Project Overview
 
 This MLOps POC demonstrates a complete machine learning pipeline:
 
-1. **Data Generation**: Apache NiFi generates synthetic order data
+1. **Data Ingestion**: Apache NiFi generates/produces synthetic transaction data
 2. **Model Training**: Training service trains a RandomForest classifier
 3. **Model Registry**: MLflow manages model versions and stages
 4. **Real-time Inference**: Inference service predicts fraud in real-time
 5. **Alerting**: Alert service detects and alerts on fraudulent transactions
+6. **Monitoring**: Streamlit dashboard displays fraud analytics
 
 ---
 
-## Prerequisites
+## 🛠️ Prerequisites
 
-- Docker Engine 20.10+
-- Docker Compose v2.0+
-- At least 4GB of RAM available
-- Ports 8080, 9092, 18080, 5000 available
+- **Docker Engine** 20.10+
+- **Docker Compose** v2.0+
+- **At least 4GB RAM** available
+- **Ports** 8080, 9092, 18080, 5000, 8501 available
 
-### Required Directory Setup
-
-Before starting the services, create the necessary directories and set permissions:
+### Directory Setup
 
 ```bash
 # Create registry directories for NiFi Registry
@@ -94,13 +100,13 @@ sudo chown -R 1000:1000 registry
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
-### Step 1: Start Infrastructure Services
+### 1. Start Infrastructure Services
 
 ```bash
-# Start Kafka and MLflow services
-docker-compose up -d kafka mlflow
+# Start Kafka, MLflow, NiFi, and NiFi Registry
+docker-compose up -d kafka mlflow nifi nifi-registry
 ```
 
 Verify services are running:
@@ -108,11 +114,7 @@ Verify services are running:
 docker-compose ps
 ```
 
-Wait for all services to show "healthy" status.
-
-### Step 2: Create Kafka Topics
-
-Create the required Kafka topics for data flow:
+### 2. Create Kafka Topics
 
 ```bash
 # Create orders topic (raw order data)
@@ -130,16 +132,24 @@ docker exec -it kafka kafka-topics \
   --bootstrap-server localhost:9092 \
   --partitions 1 \
   --replication-factor 1
+
+# Create fraud_alerts topic (fraud alerts)
+docker exec -it kafka kafka-topics \
+  --create \
+  --topic fraud_alerts \
+  --bootstrap-server localhost:9092 \
+  --partitions 1 \
+  --replication-factor 1
 ```
 
-Verify topics were created:
+Verify topics:
 ```bash
 docker exec -it kafka kafka-topics \
   --list \
   --bootstrap-server localhost:9092
 ```
 
-### Step 3: Train the Model
+### 3. Train the Model
 
 ```bash
 # Run the training service
@@ -151,122 +161,84 @@ This will:
 - Train a RandomForest classifier
 - Log metrics to MLflow
 - Register the model as `fraud_model`
-- Model is registered in MLflow model registry
 
-Access MLflow UI at: http://localhost:5000
+Access MLflow UI at: **http://localhost:5000**
 
-### Step 4: Start the Data Pipeline
+### 4. Start the Inference Pipeline
 
 ```bash
-# Start NiFi, Inference, and Alert services
-docker-compose up -d nifi nifi-registry inference alert
+# Start Inference and Alert services
+docker-compose up -d inference alert
 ```
 
-**Note**: The Alert service is not currently in docker-compose.yml but the code exists in `services/alert_service/`. You'll need to add it or run it manually.
+### 5. Start the Dashboard
 
-### Step 5: Monitor Results
-
-View inference logs:
 ```bash
+# Start Streamlit fraud dashboard
+docker-compose up -d fraud_dashboard
+```
+
+Access the dashboard at: **http://localhost:8501**
+
+---
+
+## 📊 Testing the Pipeline
+
+### Send a Test Transaction
+
+Using Kafka CLI:
+```bash
+docker exec -it kafka kafka-console-producer \
+  --topic orders \
+  --bootstrap-server localhost:9092
+```
+
+Then enter a JSON message:
+
+```json
+{"order_id": "test001", "amount": 15000, "country": "US", "device": "mobile"}
+```
+
+### Monitor Logs
+
+```bash
+# View inference logs
 docker-compose logs -f inference
-```
 
-View alert logs:
-```bash
+# View alert logs
 docker-compose logs -f alert
 ```
 
 ---
 
-## Services Overview
+## 🧩 Kafka Topics
 
-| Service | Container Name | Port | Description | Dependencies |
-|---------|---------------|------|-------------|--------------|
-| **Kafka** | `kafka` | 9092 | Message broker for data streaming | - |
-| **MLflow** | `mlflow` | 5000 | Model registry and tracking server | - |
-| **NiFi** | `nifi` | 8080 | Data ingestion and generation | - |
-| **NiFi Registry** | `nifi-registry` | 18080 | Flow version control | - |
-| **Training** | `training` | - | Trains and registers fraud model | MLflow |
-| **Inference** | `inference` | - | Consumes orders, runs predictions | Kafka, MLflow |
-| **Alert** | `alert` | - | Listens for fraud predictions | Kafka |
+| Topic | Purpose | Message Format |
+|-------|---------|----------------|
+| `orders` | Raw incoming transactions | `{"order_id": "...", "amount": 5000, "country": "US", "device": "mobile"}` |
+| `predictions` | ML prediction results | `{"order_id": "...", "amount": 5000, "country": "US", "device": "mobile", "prediction": 1}` |
+| `fraud_alerts` | Fraud alert events | Same as predictions but filtered for fraud (prediction=1) |
 
 ---
 
-## Infrastructure Components
+## 💻 Services Overview
 
-### Apache Kafka (KRaft Mode)
-
-- **Image**: `confluentinc/cp-kafka:7.8.3`
-- **Port**: 9092
-- **Mode**: KRaft (no Zookeeper required)
-- **Purpose**: Message broker for real-time data streaming
-- **Persistence**: Data stored in Docker volume `kafka_data`
-
-### MLflow
-
-- **Image**: `ghcr.io/mlflow/mlflow:v2.9.2`
-- **Port**: 5000
-- **Backend Store**: SQLite (`sqlite:////mlflow/mlflow.db`)
-- **Artifact Store**: Docker volume `mlruns`
-- **Purpose**: Model tracking, versioning, and registry
-
-### Apache NiFi
-
-- **Image**: `apache/nifi:1.23.2`
-- **Port**: 8080
-- **Purpose**: Generate synthetic order data and publish to Kafka
-- **Registry**: Connected to NiFi Registry for flow version control
-
-### NiFi Registry
-
-- **Image**: `apache/nifi-registry:1.23.2`
-- **Port**: 18080
-- **Purpose**: Version control for NiFi data flows
-- **Storage**: Local `./registry` directory
+| Service | Container | Port | Description |
+|---------|-----------|------|-------------|
+| **Kafka** | `kafka` | 9092 | Message broker for streaming |
+| **MLflow** | `mlflow` | 5000 | Model registry & tracking |
+| **NiFi** | `nifi` | 8080 | Data ingestion & generation |
+| **NiFi Registry** | `nifi-registry` | 18080 | Flow version control |
+| **Training** | `training` | - | Model training (one-time) |
+| **Inference** | `inference` | - | Real-time predictions |
+| **Alert** | `alert` | - | Fraud alerting |
+| **Dashboard** | `fraud_dashboard` | 8501 | Monitoring UI |
 
 ---
 
-## Kafka Topics
-
-### Topic: `orders`
-
-- **Description**: Raw order data from NiFi producer
-- **Partitions**: 1
-- **Replication Factor**: 1
-- **Message Format**: JSON
-
-Example message:
-```json
-{
-  "amount": 5000.00,
-  "country": "US",
-  "device": "mobile"
-}
-```
-
-### Topic: `predictions`
-
-- **Description**: Inference results with fraud prediction
-- **Partitions**: 1
-- **Replication Factor**: 1
-- **Message Format**: JSON
-
-Example message:
-```json
-{
-  "amount": 5000.00,
-  "country": "US",
-  "device": "mobile",
-  "prediction": 1
-}
-```
-
----
-
-## Model Details
+## 🤖 Model Details
 
 ### Algorithm
-
 - **Model**: RandomForest Classifier
 - **Library**: scikit-learn
 
@@ -275,42 +247,71 @@ Example message:
 | Feature | Type | Description |
 |---------|------|-------------|
 | `amount` | Numeric | Transaction amount in USD |
-| `country` | Categorical | Country code (US, IN, etc.) |
+| `country` | Categorical | Country code (US, IN, UK, etc.) |
 | `device` | Categorical | Device type (mobile, desktop) |
 
 ### Preprocessing
-
 - **Numeric Features**: Passed through directly
 - **Categorical Features**: OneHotEncoder with `handle_unknown="ignore"`
 
-### Training Data
-
-The training service generates synthetic data with the following fraud rules:
-- High amount (> $5,000) combined with specific country/device combinations
+### Fraud Detection Rules (Training Data)
+- High amount (> $5,000) combined with certain country/device combinations are labeled as fraud
 
 ### Model Registration
-
 - **Model Name**: `fraud_model`
 - **Registry**: MLflow Model Registry
-- **Stage**: Production (loaded by inference service)
+- **Stage**: Production
 
 ---
 
-## Environment Variables
+## 📂 Project Structure
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MLFLOW_TRACKING_URI` | http://mlflow:5000 | MLflow server URL |
-| `MODEL_NAME` | fraud_model | Registered model name |
-| `MODEL_STAGE` | Production | Model stage to load |
+```
+mlops-poc/
+├── docker-compose.yml              # Main orchestration file
+├── README.md                       # This documentation
+├── docs/
+│   └── docs.txt                    # Setup notes
+├── registry/
+│   ├── database/                  # NiFi Registry database
+│   ├── flow_storage/              # NiFi Registry flow storage
+│   └── postgresql-42.7.3.jar      # PostgreSQL JDBC driver for NiFi
+├── services/
+│   ├── training_service/
+│   │   ├── train.py               # Training script
+│   │   ├── requirements.txt       # Python dependencies
+│   │   └── Dockerfile             # Container image
+│   ├── inference_service/
+│   │   ├── inference.py           # Inference script
+│   │   ├── requirements.txt       # Python dependencies
+│   │   └── Dockerfile             # Container image
+│   ├── alert_service/
+│   │   ├── alert.py               # Alert consumption script
+│   │   ├── requirements.txt       # Python dependencies
+│   │   └── Dockerfile             # Container image
+│   └── Fraud_Dashboard/
+│       ├── Dashboard.py           # Streamlit dashboard
+│       ├── requirements.txt       # Python dependencies
+│       └── Dockerfile             # Container image
+└── data/                          # Data directory (empty)
+```
 
 ---
 
-## Troubleshooting
+## 🌐 Access Services
+
+| Service | URL |
+|---------|-----|
+| MLflow | http://localhost:5000 |
+| NiFi | http://localhost:8080/nifi |
+| NiFi Registry | http://localhost:18080 |
+| Fraud Dashboard | http://localhost:8501 |
+
+---
+
+## 🔧 Troubleshooting
 
 ### Kafka Connection Issues
-
-If inference service fails to connect to Kafka:
 ```bash
 # Check Kafka is running
 docker-compose ps kafka
@@ -323,11 +324,9 @@ docker exec -it kafka kafka-broker-api-versions --bootstrap-server localhost:909
 ```
 
 ### MLflow Model Not Found
-
-If inference service can't load the model:
 ```bash
 # Verify model is registered
-docker exec -it mlflow mlflow models list -g 2>/dev/null || echo "Check MLflow UI at http://localhost:5000"
+# Access MLflow UI at http://localhost:5000
 
 # Rebuild training service
 docker-compose build training
@@ -335,25 +334,23 @@ docker-compose run training
 ```
 
 ### NiFi Flow Not Starting
-
-Access NiFi UI at http://localhost:8080 and verify:
-1. Processor is running
-2. Kafka connection is configured
-3. FlowFiles are being generated
+1. Access NiFi UI at http://localhost:8080
+2. Verify Processor is running
+3. Check Kafka connection is configured
+4. Verify FlowFiles are being generated
 
 ### Port Conflicts
-
-If ports are already in use:
 ```bash
 # Check what's using the port
 sudo lsof -i :8080
 sudo lsof -i :9092
 sudo lsof -i :5000
+sudo lsof -i :8501
 ```
 
 ---
 
-## Stopping Services
+## ⏹️ Stopping Services
 
 ### Stop all services (preserve data)
 ```bash
@@ -377,76 +374,25 @@ docker-compose restart inference
 
 ---
 
-## Extending the Project
+## 🔮 Future Improvements
 
-### Adding New Data Sources
-
-To add new data sources:
-
-1. **Use NiFi** (http://localhost:8080) for data ingestion
-2. **Create a new producer service** in `services/`
-3. **Use Kafka CLI** to produce messages:
-
-```bash
-docker exec -it kafka kafka-console-producer \
-  --bootstrap-server localhost:9092 \
-  --topic orders
-```
-
-### Adding More Models
-
-1. Modify [`services/training_service/train.py`](services/training_service/train.py)
-2. Change `registered_model_name` parameter
-3. Update [`services/inference_service/inference.py`](services/inference_service/inference.py) to load the new model
-
-### Adding Alert Integrations
-
-Modify [`services/alert_service/alert.py`](services/alert_service/alert.py) to:
-- Send emails
-- Post to Slack
-- Trigger webhooks
-- Write to database
+- [ ] CI/CD pipeline for automated model deployment
+- [ ] Terraform infrastructure provisioning
+- [ ] Kafka Dead Letter Queue (DLQ)
+- [ ] Slack/Email fraud alert notifications
+- [ ] Model monitoring and drift detection
+- [ ] Local PostgreSQL database (currently using NeonDB cloud)
 
 ---
 
-## File Structure
-
-```
-mlops-poc/
-├── docker-compose.yml              # Main orchestration file
-├── docs.txt                       # Setup notes
-├── docs/
-│   └── README.md                  # This documentation
-├── registry/
-│   ├── database/                  # NiFi Registry database
-│   └── flow_storage/              # NiFi Registry flow storage
-├── services/
-│   ├── training_service/
-│   │   ├── train.py               # Training script
-│   │   ├── requirements.txt       # Python dependencies
-│   │   └── Dockerfile             # Container image
-│   ├── inference_service/
-│   │   ├── inference.py           # Inference script
-│   │   ├── requirements.txt       # Python dependencies
-│   │   └── Dockerfile             # Container image
-│   └── alert_service/
-│       ├── alert.py               # Alert consumption script
-│       ├── requirements.txt       # Python dependencies
-│       └── Dockerfile             # Container image
-└── data/                          # Data directory (empty)
-```
-
----
-
-## License
+## 📄 License
 
 This project is provided as a proof-of-concept for educational purposes.
 
 ---
 
-## References
+## 👨‍💻 Author
 
-- [MLflow Documentation](https://mlflow.org/docs/latest/index.html)
-- [Apache Kafka Documentation](https://kafka.apache.org/documentation/)
-- [Apache NiFi Documentation](https://nifi.apache.org/docs.html)
-- [scikit-learn Documentation](https://scikit-learn.org/stable/documentation.html)
+**Dharshan**
+
+MLOps / Data Platform Engineering Project

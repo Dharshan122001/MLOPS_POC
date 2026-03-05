@@ -1,30 +1,43 @@
 import json
-from confluent_kafka import Consumer
+import time
+from kafka import KafkaConsumer, KafkaProducer
 
 print("🚨 Alert Service Starting...")
 
-consumer_config = {
-    "bootstrap.servers": "kafka:9092",
-    "group.id": "alert-group",
-    "auto.offset.reset": "earliest"
-}
+# Wait for Kafka container to start
+time.sleep(10)
 
-consumer = Consumer(consumer_config)
-consumer.subscribe(["fraud_predictions"])
+# Kafka Consumer (reads predictions)
+consumer = KafkaConsumer(
+    "predictions",
+    bootstrap_servers="kafka:9092",
+    value_deserializer=lambda x: json.loads(x.decode("utf-8")),
+    auto_offset_reset="latest",
+    enable_auto_commit=True,
+    group_id="alert-group",
+    consumer_timeout_ms=1000
+)
 
-print("🚨 Listening for Fraud Alerts...")
+# Kafka Producer (sends fraud alerts)
+producer = KafkaProducer(
+    bootstrap_servers="kafka:9092",
+    value_serializer=lambda x: json.dumps(x).encode("utf-8")
+)
+
+print("🚨 Listening for Predictions...")
 
 while True:
-    msg = consumer.poll(1.0)
+    for message in consumer:
+        data = message.value
 
-    if msg is None:
-        continue
+        print("📥 Received prediction:", data)
 
-    if msg.error():
-        print("❌ Kafka Error:", msg.error())
-        continue
+        if data["prediction"] == 1:
+            print("🚨 FRAUD ALERT:", data)
 
-    prediction = json.loads(msg.value().decode("utf-8"))
+            # Send fraud event to fraud_alerts topic
+            producer.send("fraud_alerts", data)
+            producer.flush()
 
-    if prediction["prediction"] == 1:
-        print("🚨 FRAUD ALERT:", prediction)
+        else:
+            print("✅ Safe transaction:", data["order_id"])

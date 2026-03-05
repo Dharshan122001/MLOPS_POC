@@ -47,6 +47,7 @@ services:
       - nifi_flowfile:/opt/nifi/nifi-current/flowfile_repository
       - nifi_content:/opt/nifi/nifi-current/content_repository
       - nifi_provenance:/opt/nifi/nifi-current/provenance_repository
+      - ./registry/postgresql-42.7.3.jar:/opt/nifi/nifi-current/lib/postgresql.jar
 
   nifi-registry:
     image: apache/nifi-registry:1.23.2
@@ -107,6 +108,21 @@ services:
       MLFLOW_TRACKING_URI: http://mlflow:5000
     volumes:
       - mlflow_artifacts:/mlruns
+
+  alert:
+    build: ./services/alert_service
+    container_name: alert
+    depends_on:
+      - kafka
+    restart: always
+
+  fraud_dashboard:
+    build: ./services/Fraud_Dashboard
+    container_name: fraud_dashboard
+    ports:
+      - "8501:8501"
+    depends_on:
+      - kafka
 
 # =========================================
 # Named Volumes (Persistent)
