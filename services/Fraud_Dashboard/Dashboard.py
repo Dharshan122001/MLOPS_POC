@@ -93,10 +93,14 @@ with col1:
     labels = ["Fraud", "Genuine"]
     values = [fraud_count, genuine_count]
 
-    fig, ax = plt.subplots()
-    ax.pie(values, labels=labels, autopct='%1.1f%%')
-    ax.axis("equal")
+    fig,ax = plt.subplots()
 
+    if sum(values) == 0:
+        ax.text(0.5, 0.5, "No transactions found", ha="center", va="center", fontsize=14)
+    else:
+        ax.pie(values, labels=labels, autopct='%1.1f%%')
+
+    ax.axis("equal")
     st.pyplot(fig)
 
 # Device chart
@@ -125,9 +129,6 @@ st.subheader("🚨 Fraud Transactions")
 
 fraud_df = filtered_df[filtered_df["prediction"] == 1]
 
-st.dataframe(
-    fraud_df,
-    use_container_width=True
-)
+st.dataframe(fraud_df, width="stretch")
 
 st.divider()
